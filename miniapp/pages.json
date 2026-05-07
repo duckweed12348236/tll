@@ -1,0 +1,94 @@
+{
+  "pages": [
+    {
+      "path": "pages/product-list",
+      "style": {
+        "navigationBarTitleText": "商品"
+      }
+    },
+    {
+      "path": "pages/order-list",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "pages/order-detail",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    },
+    {
+      "path": "pages/profile",
+      "style": {
+        "navigationBarTitleText": "个人中心",
+        "transparentTitle": "always"
+      }
+    },
+    {
+      "path": "pages/user-detail",
+      "style": {
+        "navigationBarTitleText": "修改个人资料"
+      }
+    },
+    {
+      "path": "pages/address-list",
+      "style": {
+        "navigationBarTitleText": "我的地址"
+      }
+    },
+    {
+      "path": "pages/address-edit",
+      "style": {
+        "navigationBarTitleText": "新增地址"
+      }
+    },
+    {
+      "path": "pages/product-detail",
+      "style": {
+        "navigationBarTitleText": "商品详情",
+        "transparentTitle": "auto"
+      }
+    },
+    {
+      "path": "pages/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "uni-app",
+    "navigationBarBackgroundColor": "#F8F8F8",
+    "backgroundColor": "#F8F8F8"
+  },
+  "uniIdRouter": {},
+  "tabBar": {
+    "color": "#7A7E83",
+    "selectedColor": "#ce4031",
+    "borderStyle": "black",
+    "backgroundColor": "#F8F8F8",
+    "position": "bottom",
+    "list": [
+      {
+        "pagePath": "pages/product-list",
+        "iconPath": "static/tabbars/seckill.png",
+        "selectedIconPath": "static/tabbars/seckillHL.png",
+        "text": "商品"
+      },
+      {
+        "pagePath": "pages/order-list",
+        "iconPath": "static/tabbars/order.png",
+        "selectedIconPath": "static/tabbars/orderHL.png",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/profile",
+        "iconPath": "static/tabbars/mine.png",
+        "selectedIconPath": "static/tabbars/mineHL.png",
+        "text": "我的"
+      }
+    ]
+  }
+}

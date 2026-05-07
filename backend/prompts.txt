@@ -1,0 +1,17 @@
+##示例
+修改前：
+REDIS_CONFIG = {
+    "host": "localhost",
+    "port": 6379,
+    "index": 0,
+    "url": "redis://localhost:6379/0"
+}
+
+修改后：
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
+REDIS_INDEX = 0
+REDIS_URL = "redis://localhost:6379/0"
+
+##任务
+将配置文件中的配置项按照格式转换，并追踪更新配置的用法
