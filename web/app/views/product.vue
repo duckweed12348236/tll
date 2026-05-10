@@ -146,27 +146,29 @@ const rules = {
 }
 
 const fetchProducts = async () => {
-  let params = {...query}
-  if (!query.name) {
-    params.name = ""
+  let params = {page: query.page, size: query.size}
+  if (query.name) {
+    params.name = {...params, name: query.name}
   }
-  if (!query.priceMin) {
-    params.priceMin = -1
+  if (query.priceMin) {
+    params.priceMin = {...params, priceMin: query.priceMin}
   }
-  if (!query.priceMax) {
-    params.priceMax = -1
+  if (query.priceMax) {
+    params.priceMax = {...params, priceMax: query.priceMax}
   }
-  if (!query.stockMin) {
-    params.stockMin = -1
+  if (query.stockMin) {
+    params.stockMin = {...params, stockMin: query.stockMin}
   }
-  if (!query.stockMax) {
-    params.stockMax = -1
+  if (query.stockMax) {
+    params.stockMax = {...params, stockMax: query.stockMax}
   }
   if (!query.discontinued) {
-    params.discontinued = -1
+    params = {...params, discontinued: -1}
+  } else {
+    params = {...params, discontinued: query.discontinued}
   }
-  loading.value = true
 
+  loading.value = true
   const response = await request.get("/admin/product", {params})
   if (response.code === 1) {
     products.value = response.data.map(product => ({...product, price: Number(product.price)}))

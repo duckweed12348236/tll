@@ -6,12 +6,11 @@ from datetime import datetime, timedelta, time
 
 import magic
 from aiofiles import open
-from fastapi import Depends, HTTPException, status, APIRouter, UploadFile, File, Path, Query
+from fastapi import HTTPException, status, APIRouter, UploadFile, File, Path, Query
 from loguru import logger
 from tortoise.transactions import in_transaction
 
 from config import STORAGE_DIR, SERVER_URL
-from dependencies import get_now
 from plugins.redis import ProductCache, OrderCache
 from schemas.admin import ProductIn, ProductQuery, SalesStatusOption, OrderQuery, OrderStatusOption, DayOption
 from models.shopping import Product, OrderStatus
@@ -65,13 +64,13 @@ async def list_products(query: ProductQuery = Query()):
     exprs = []
     if query.name:
         exprs.append(ProductCache.name % query.name)
-    if query.price_max >= 0:
+    if query.price_max:
         exprs.append(ProductCache.price <= query.price_max)
-    if query.price_min >= 0:
+    if query.price_min:
         exprs.append(ProductCache.price >= query.price_min)
-    if query.stock_max >= 0:
+    if query.stock_max:
         exprs.append(ProductCache.stock <= query.stock_max)
-    if query.stock_min >= 0:
+    if query.stock_min:
         exprs.append(ProductCache.stock >= query.stock_min)
     if query.discontinued != SalesStatusOption.ALL:
         exprs.append(ProductCache.discontinued == query.discontinued)

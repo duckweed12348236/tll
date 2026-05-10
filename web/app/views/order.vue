@@ -28,10 +28,8 @@ const orders = ref([])
 const order = reactive({})
 const query = reactive({
   page: 1,
-  size: 10,
+  size: 50,
   status: statusQueryOptions.ALL,
-  quantityMin: null,
-  quantityMax: null,
   amountMin: null,
   amountMax: null,
   creationTimeMin: null,
@@ -80,39 +78,34 @@ const columns = [
 ]
 
 const fetchOrders = async () => {
-  loading.value = true
-  let params = {status: query.status}
+  let params = {page: query.page, size: query.size, status: query.status}
   if (query.amountMin) {
     params = {...params, amountMin: query.amountMin}
   }
   if (query.amountMax) {
     params = {...params, amountMax: query.amountMax}
   }
-  if (query.quantityMin) {
-    params = {...params, quantityMin: query.quantityMin}
-  }
-  if (query.quantityMax) {
-    params = {...params, quantityMax: query.quantityMax}
-  }
   if (params.creationTimeMin) {
-    const date = new Date(params.creationTimeMin)
+    const date = new Date(query.creationTimeMin)
     if (!isNaN(date.getTime())) {
-      params.creationTimeMin = date.toISOString()
+      params = {...params, creationTimeMin: date.toISOString()}
     }
   }
   if (params.creationTimeMax) {
-    const date = new Date(params.creationTimeMax)
+    const date = new Date(query.creationTimeMax)
     if (!isNaN(date.getTime())) {
-      params.creationTimeMax = date.toISOString()
+      params = {...params, creationTimeMax: date.toISOString()}
     }
   }
 
+  loading.value = true
   const response = await request.get("/admin/order", {params})
   if (response.code === 1) {
     orders.value = response.data
   } else {
     message.error(response.message)
   }
+  loading.value = false
 }
 
 const viewDetail = (oldOrder) => {
@@ -142,20 +135,18 @@ const setPage = async (page) => {
 
 const setSize = async (size) => {
   query.size = size
-  query.page = 1
   await fetchOrders()
 }
 
-const reset = () => {
-  query.status = statusQueryOptions.ALL
-  query.quantityMin = null
-  query.quantityMax = null
-  query.amountMin = null
-  query.amountMax = null
-  query.creationTimeMin = null
-  query.creationTimeMax = null
-  query.page = 1
-  fetchOrders()
+const reset = async () => {
+  Object.assign(query, {
+    status: statusQueryOptions.ALL,
+    amountMin: null,
+    amountMax: null,
+    creationTimeMin: null,
+    creationTimeMax: null
+  })
+  await fetchOrders()
 }
 
 onMounted(async () => {
@@ -174,22 +165,6 @@ onMounted(async () => {
           class="flex-1 min-w-[120px]"/>
       <n-input-group class="flex-1 min-w-[200px]">
         <n-input-number
-            v-model:value="query.quantityMin"
-            placeholder="数量下限"
-            :min="1"
-            :step="1"
-            clearable
-            class="flex-1"/>
-        <n-input-number
-            v-model:value="query.quantityMax"
-            placeholder="数量上限"
-            :min="1"
-            :step="1"
-            clearable
-            class="flex-1"/>
-      </n-input-group>
-      <n-input-group class="flex-1 min-w-[200px]">
-        <n-input-number
             v-model:value="query.amountMin"
             placeholder="金额下限"
             :min="0.01"
@@ -206,8 +181,7 @@ onMounted(async () => {
             :precision="2"
             :step="1"
             clearable
-            class="flex-1"
-        >
+            class="flex-1">
           <template #prefix>¥</template>
         </n-input-number>
       </n-input-group>
@@ -217,15 +191,13 @@ onMounted(async () => {
             type="date"
             placeholder="开始日期"
             clearable
-            class="flex-1"
-        />
+            class="flex-1"/>
         <n-date-picker
             v-model:value="query.creationTimeMax"
             type="date"
             placeholder="结束日期"
             clearable
-            class="flex-1"
-        />
+            class="flex-1"/>
       </n-input-group>
       <n-button @click="reset">
         <template #icon>
@@ -248,8 +220,7 @@ onMounted(async () => {
         :bordered="false"
         :loading="loading"
         max-height="65vh"
-        striped
-    />
+        striped/>
     <div class="flex justify-end mt-4">
       <n-pagination
           v-model:page="query.page"
@@ -257,8 +228,7 @@ onMounted(async () => {
           :page-sizes="[10, 20, 50, 100]"
           show-size-picker
           @update:page="setPage"
-          @update:page-size="setSize"
-      />
+          @update:page-size="setSize"/>
     </div>
 
     <!-- 订单详情对话框 -->
@@ -267,8 +237,7 @@ onMounted(async () => {
         :mask-closable="false"
         preset="dialog"
         title="订单详情"
-        style="width: 700px"
-    >
+        style="width: 700px">
       <n-card v-if="order" :bordered="false">
         <n-descriptions label-placement="left" bordered column="1">
           <n-descriptions-item label="订单ID">{{ order.id }}</n-descriptions-item>
@@ -293,8 +262,7 @@ onMounted(async () => {
                   v-for="(url, index) in order.product?.covers"
                   :key="index"
                   :src="url"
-                  class="w-20 h-20 object-cover rounded"
-              />
+                  class="w-20 h-20 object-cover rounded"/>
             </div>
           </n-descriptions-item>
         </n-descriptions>
