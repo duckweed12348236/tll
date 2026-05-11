@@ -44,8 +44,4 @@ const router = createRouter({
     routes: routes
 })
 
-router.beforeEach((to, from, next) => {
-    return next()
-})
-
 export {router, routes}

@@ -1,13 +1,13 @@
 <script setup>
-import {onMounted, ref, computed, reactive} from "vue"
+import {onMounted, ref, reactive} from "vue"
 import {request} from "@/plugins/request.js"
-import {message} from "@/plugins/feedback.js"
 import {LineChart} from "vue-chart-3"
 import {Chart, registerables} from "chart.js"
-import {NSelect, NCard, NSpace, NStatistic, NGrid, NGi} from "naive-ui"
+import {NSelect, NCard, NStatistic, useMessage} from "naive-ui"
 
 Chart.register(...registerables)
 
+const message = useMessage()
 const dayOptions = [
   {label: "最近7天", value: 7},
   {label: "最近30天", value: 30},

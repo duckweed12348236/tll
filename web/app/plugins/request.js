@@ -1,9 +1,7 @@
 import axios from "axios"
 import qs from "qs"
-import {router} from "@/plugins/router.js"
 import {serializer} from "@/plugins/serializer.js"
 import {SERVER_URL} from "@/config.js"
-import {useStore} from "@/plugins/store.js"
 
 function parseSnakeCaseToCamelCase(obj) {
     if (typeof obj !== "object" || obj === null || obj === {}) {
@@ -66,10 +64,6 @@ class Request {
         })
 
         this.instance.interceptors.request.use(config => {
-            const store = useStore()
-            if (store.token) {
-                config.headers["Authorization"] = store.token
-            }
             return config
         })
     }
@@ -92,23 +86,13 @@ class Request {
                 }
             }
 
-            const response = await this.instance({
-                method: method,
-                url: url,
-                data: data,
-                params: params
-            }, config)
-
+            const response = await this.instance({method, url, data, params}, config)
             return {code: 1, message: null, data: parseSnakeCaseToCamelCase(response.data)}
         } catch (error) {
             if (error.hasOwnProperty("response")) {
-                if (error.response.status === 401) {
-                    await router.push({name: "login"})
-                }
-                return {code: 0, message: JSON.stringify(error.response.data.detail), data: null}
-            } else {
-                return {code: 0, message: "请求失败", data: null}
+                return {code: 0, message: error.response.data.detail, data: null}
             }
+            return {code: 0, message: "请求失败", data: null}
         }
     }
 

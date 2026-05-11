@@ -4,7 +4,11 @@ import {zhCN} from "naive-ui"
 
 <template>
   <n-config-provider :locale="zhCN">
-    <router-view/>
+    <n-message-provider>
+      <n-dialog-provider>
+        <router-view/>
+      </n-dialog-provider>
+    </n-message-provider>
   </n-config-provider>
 </template>
 

@@ -1,7 +1,6 @@
 <script setup>
 import {h, onMounted, reactive, ref, useTemplateRef} from "vue"
 import {request} from "@/plugins/request.js"
-import {dialog, message} from "@/plugins/feedback.js"
 import {
   DeleteOutlined,
   EditOutlined,
@@ -11,8 +10,10 @@ import {
   SearchOutlined,
   StopOutlined
 } from "@ant-design/icons-vue"
-import {NButton, NInputNumber, NInputGroup, NTag} from "naive-ui"
+import {NButton, NInputNumber, NInputGroup, NTag, useDialog, useMessage} from "naive-ui"
 
+const dialog = useDialog()
+const message = useMessage()
 const form = useTemplateRef("form")
 const products = ref([])
 const product = reactive({
@@ -32,11 +33,17 @@ const query = reactive({
   stockMax: null,
   stockMin: null,
   discontinued: null,
-  name: null
+  name: null,
+  status: -1
 })
 const loading = ref(false)
 const visible = ref(false)
 const action = ref(1)
+const statusOptions = [
+  {label: "全部", value: -1},
+  {label: "已下架", value: 0},
+  {label: "在售", value: 1}
+]
 const columns = [
   {
     title: "商品名称",
@@ -62,13 +69,7 @@ const columns = [
       type: row.discontinued ? "error" : "success",
       size: "small",
       bordered: false
-    }, {default: () => row.discontinued ? "已下架" : "在售"}),
-    filterMultiple: false,
-    filterOptions: [
-      {label: "在售", value: true},
-      {label: "已下架", value: false}
-    ],
-    filter: true
+    }, {default: () => row.discontinued ? "已下架" : "在售"})
   },
   {
     title: "操作",
@@ -146,7 +147,7 @@ const rules = {
 }
 
 const fetchProducts = async () => {
-  let params = {page: query.page, size: query.size}
+  let params = {page: query.page, size: query.size, status: query.status}
   if (query.name) {
     params.name = {...params, name: query.name}
   }
@@ -161,11 +162,6 @@ const fetchProducts = async () => {
   }
   if (query.stockMax) {
     params.stockMax = {...params, stockMax: query.stockMax}
-  }
-  if (!query.discontinued) {
-    params = {...params, discontinued: -1}
-  } else {
-    params = {...params, discontinued: query.discontinued}
   }
 
   loading.value = true
@@ -188,15 +184,9 @@ const setSize = async (size) => {
   await fetchProducts()
 }
 
-const setDiscontinued = async (value) => {
-  query.discontinued = value.discontinued
-  await fetchProducts()
-}
-
 const createProduct = async (product) => {
   const response = await request.post("/admin/product", product)
   if (response.code === 1) {
-    message.success("创建成功")
     await fetchProducts()
   } else {
     message.error(response.message)
@@ -204,9 +194,8 @@ const createProduct = async (product) => {
 }
 
 const updateProduct = async (product, productId) => {
-  const response = await request.patch("/admin/product", product, {path: productId})
+  const response = await request.put("/admin/product", product, {path: productId})
   if (response.code === 1) {
-    message.success("修改成功")
     await fetchProducts()
   } else {
     message.error(response.message)
@@ -223,7 +212,6 @@ const updateProductStatus = async (product) => {
     onPositiveClick: async () => {
       const response = await request.patch("/admin/product", {}, {path: product.id})
       if (response.code === 1) {
-        message.success(isDiscontinued ? "上架成功" : "下架成功")
         await fetchProducts()
       } else {
         message.error(response.message)
@@ -232,7 +220,7 @@ const updateProductStatus = async (product) => {
   })
 }
 
-const deleteProduct = async (product) => {
+const deleteProduct = (product) => {
   dialog.warning({
     title: "确认删除",
     content: `确定要删除商品 "${product.name}" 吗？此操作不可恢复。`,
@@ -241,7 +229,6 @@ const deleteProduct = async (product) => {
     onPositiveClick: async () => {
       const response = await request.delete("/admin/product", {path: product.id})
       if (response.code === 1) {
-        message.success("删除成功")
         await fetchProducts()
       } else {
         message.error(response.message)
@@ -251,13 +238,10 @@ const deleteProduct = async (product) => {
 }
 
 const uploadImage = async (options, attrName) => {
-  const response = await request.upload("/admin/image", options.file.file, "images", {
-    setProgress: (percent) => {
-      console.log(percent)
-      options.onProgress({percent})
-    }
-  })
+  options.onProgress({percent: 0})
+  const response = await request.upload("/admin/image", options.file.file, "images")
   if (response.code === 1) {
+    options.onProgress({percent: 100})
     product[attrName].push(response.data[0])
     options.onFinish()
   } else {
@@ -339,8 +323,8 @@ const formatDateTime = (dateString) => {
   })
 }
 
-onMounted(() => {
-  fetchProducts()
+onMounted(async () => {
+  await fetchProducts()
 })
 </script>
 
@@ -352,33 +336,38 @@ onMounted(() => {
         @keyup.enter="fetchProducts"
         clearable
         class="flex-2"/>
+    <n-select
+        v-model:value="query.status"
+        :options="statusOptions"
+        placeholder="商品状态"
+        class="flex-1 min-w-[120px]"/>
     <n-input-group class="flex-1">
       <n-input-number
           v-model:value="query.priceMin"
           placeholder="价格下限"
-          :min="0.01"
+          :min="0"
           :precision="2"
-          :step="0.01"
+          :step="1"
           clearable/>
       <n-input-number
           v-model:value="query.priceMax"
           placeholder="价格上限"
-          :min="0.01"
+          :min="0"
           :precision="2"
-          :step="0.01"
+          :step="1"
           clearable/>
     </n-input-group>
     <n-input-group class="flex-1">
       <n-input-number
           v-model:value="query.stockMin"
           placeholder="库存下限"
-          :min="1"
+          :min="0"
           :step="1"
           clearable/>
       <n-input-number
           v-model:value="query.stockMax"
           placeholder="库存上限"
-          :min="1"
+          :min="0"
           :step="1"
           clearable/>
     </n-input-group>
@@ -402,8 +391,7 @@ onMounted(() => {
       :bordered="false"
       max-height="65vh"
       striped
-      :loading="loading"
-      @update:filters="setDiscontinued"/>
+      :loading="loading"/>
   <div class="mt-4 flex justify-end">
     <n-pagination
         v-model:page="query.page"
@@ -438,7 +426,6 @@ onMounted(() => {
             label-placement="left"
             bordered
             column="1">
-          <n-descriptions-item label="商品ID">{{ product.id }}</n-descriptions-item>
           <n-descriptions-item label="商品名称">{{ product.name }}</n-descriptions-item>
           <n-descriptions-item label="价格">¥{{ product.price }}</n-descriptions-item>
           <n-descriptions-item label="库存">{{ product.stock }}</n-descriptions-item>
@@ -450,25 +437,19 @@ onMounted(() => {
           </n-descriptions-item>
           <n-descriptions-item label="创建时间">{{ formatDateTime(product.creationTime) }}</n-descriptions-item>
           <n-descriptions-item label="封面">
-            <n-carousel show-arrow>
+            <n-carousel show-arrow centered-slides class="max-w-60">
               <n-image
                   v-for="(url, index) in product.covers"
                   :key="index"
-                  :src="url"
-                  width="50%"
-                  height="50%"
-                  object-fit="cover"/>
+                  :src="url"/>
             </n-carousel>
           </n-descriptions-item>
           <n-descriptions-item label="详情">
-            <n-carousel show-arrow>
+            <n-carousel show-arrow centered-slides class="max-w-60">
               <n-image
                   v-for="(url, index) in product.details"
                   :key="index"
-                  :src="url"
-                  width="100%"
-                  height="50%"
-                  object-fit="cover"/>
+                  :src="url"/>
             </n-carousel>
           </n-descriptions-item>
         </n-descriptions>
@@ -512,6 +493,7 @@ onMounted(() => {
           <n-form-item label="封面" path="covers">
             <n-upload
                 multiple
+                :default-file-list="product.covers.map(url => ({url, name: url, status: 'finished'}))"
                 @remove="({index}) => removeImage(index, 'covers')"
                 :custom-request="(options) => uploadImage(options, 'covers')"
                 list-type="image-card"
@@ -522,6 +504,7 @@ onMounted(() => {
           <n-form-item label="详情" path="details">
             <n-upload
                 multiple
+                :default-file-list="product.details.map(url => ({url, name: url, status: 'finished'}))"
                 @remove="(options) => removeImage(options, 'details')"
                 :custom-request="(options) => uploadImage(options, 'details')"
                 list-type="image-card"

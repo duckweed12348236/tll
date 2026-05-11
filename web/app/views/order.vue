@@ -1,11 +1,11 @@
 <script setup>
 import {h, onMounted, reactive, ref} from "vue"
 import {request} from "@/plugins/request.js"
-import {message} from "@/plugins/feedback.js"
 import {EyeOutlined, SearchOutlined, RedoOutlined} from "@ant-design/icons-vue"
-import {NButton, NTag} from "naive-ui"
+import {NButton, NTag, useMessage} from "naive-ui"
 
 // 订单状态选项
+const message = useMessage()
 const statusQueryOptions = {
   ALL: -1,
   UNPAID: 0,
@@ -161,7 +161,6 @@ onMounted(async () => {
           v-model:value="query.status"
           :options="Object.entries(statusOptions).map(([_, value]) => ({label: value.label, value: value.value}))"
           placeholder="订单状态"
-          clearable
           class="flex-1 min-w-[120px]"/>
       <n-input-group class="flex-1 min-w-[200px]">
         <n-input-number

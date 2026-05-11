@@ -12,7 +12,7 @@ from tortoise.transactions import in_transaction
 
 from config import STORAGE_DIR, SERVER_URL
 from plugins.redis import ProductCache, OrderCache
-from schemas.admin import ProductIn, ProductQuery, SalesStatusOption, OrderQuery, OrderStatusOption, DayOption
+from schemas.admin import ProductIn, ProductQuery, ProductStatusOption, OrderQuery, OrderStatusOption, DayOption
 from models.shopping import Product, OrderStatus
 
 router = APIRouter(prefix="/admin")
@@ -23,7 +23,6 @@ allowed_mime_types = {
     'image/png',
     'image/webp'
 }
-
 
 @router.post("/image")
 async def upload_images(images: list[UploadFile] = File()):
@@ -72,8 +71,9 @@ async def list_products(query: ProductQuery = Query()):
         exprs.append(ProductCache.stock <= query.stock_max)
     if query.stock_min:
         exprs.append(ProductCache.stock >= query.stock_min)
-    if query.discontinued != SalesStatusOption.ALL:
-        exprs.append(ProductCache.discontinued == query.discontinued)
+    if query.status != ProductStatusOption.ALL:
+        status = not query.status
+        exprs.append(ProductCache.discontinued == status)
     return await ProductCache.find(*exprs).sort_by("-creation_time").page(
         (query.page - 1) * query.size, query.size)
 

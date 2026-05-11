@@ -30,7 +30,7 @@ class ProductIn(Schema):
     per_max_quantity: int = Field(gt=0)
 
 
-class SalesStatusOption(IntEnum):
+class ProductStatusOption(IntEnum):
     ALL = -1
     DELISTED = 0
     LISTED = 1
@@ -44,7 +44,7 @@ class ProductQuery(Schema):
     stock_max: int | None = Field(None, gt=0)
     stock_min: int | None = Field(None, gt=0)
     name: str | None = Field(None, max_length=200)
-    discontinued: SalesStatusOption
+    status: ProductStatusOption
 
     @model_validator(mode="after")
     def validate_self(self) -> Self:

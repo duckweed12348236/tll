@@ -23,14 +23,10 @@ snowflake = Snowflake()
 
 @router.get("/product")
 async def list_products(keyword: str | None = Query(None, min_length=1)):
+    exprs = [ProductCache.stock > 0, ProductCache.discontinued == False]
     if keyword:
-        return await ProductCache.find(
-            ProductCache.name % keyword,
-            ProductCache.stock > 0,
-            ProductCache.discontinued == False).sort_by("-creation_time").values().all()
-    return await ProductCache.find(
-        ProductCache.stock > 0,
-        ProductCache.discontinued == False).sort_by("-creation_time").values().all()
+        exprs.append(ProductCache.name % keyword)
+    return await ProductCache.find(*exprs).sort_by("-creation_time").values().all()
 
 
 @router.get("/product/{product_id}")
