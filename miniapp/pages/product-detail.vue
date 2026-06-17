@@ -60,7 +60,7 @@
           <view class="product-cover-row">
             <image
                 class="product-cover"
-                :src="product.covers"
+                :src="product.covers[0]"
                 mode="aspectFill"
             />
             <view class="product-info">
@@ -77,8 +77,7 @@
             <uni-number-box
                 :min="1"
                 :max="Math.max(1, product.perMaxQuantity || 999)"
-                v-model="quantity"
-            />
+                v-model="quantity"/>
             <text v-if="product.perMaxQuantity" class="limit-hint">限购{{ product.perMaxQuantity }}件</text>
           </view>
         </view>
@@ -98,13 +97,11 @@
           </view>
         </view>
 
-        <!-- 总金额 -->
         <view class="popup-row total-row">
           <text class="row-label">总金额</text>
           <text class="total-amount">¥{{ totalAmount.toFixed(2) }}</text>
         </view>
 
-        <!-- 下单按钮 -->
         <view class="popup-footer">
           <button class="order-btn" @tap="placeOrder">立即下单</button>
         </view>
@@ -117,6 +114,7 @@
 import {computed, reactive, ref} from "vue"
 import {onShow, onLoad, onUnload} from "@dcloudio/uni-app"
 import {request} from "@/plugins/request"
+import {handleUrls} from "@/plugins/url"
 import {serializer} from "@/plugins/serializer"
 
 const quantity = ref(1)
@@ -129,20 +127,18 @@ const address = reactive({
 })
 const product = reactive({
   id: 0,
-  name: "mao",
-  price: 100,
+  name: "",
+  price: 0,
   stock: 0,
-  perMaxQuantity: 100,
-  covers: ["/static/logo.png", "/static/logo.png"],
-  details: ["/static/logo.png", "/static/logo.png"]
+  perMaxQuantity: 0,
+  covers: [],
+  details: []
 })
 const popupInstance = ref(null)
 
-// 总金额（保留两位小数，不四舍五入）
 const totalAmount = computed(() => {
   const price = Number(product.price) || 0
   const total = price * quantity.value
-  // 保留两位小数，不四舍五入（截断）
   return Math.floor(total * 100) / 100
 })
 
@@ -151,6 +147,8 @@ const fetchProduct = async (productId) => {
   if (response.code === 1) {
     Object.assign(product, response.data[0])
     Object.assign(address, response.data[1])
+    product.covers = handleUrls(product.covers)
+    product.details = handleUrls(product.details)
   } else {
     uni.showToast({
       title: response.message,
@@ -199,7 +197,7 @@ const previewImage = (urls, current) => {
 
 const chooseAddress = () => {
   uni.navigateTo({
-    url: `/pages/address?discountedProductId=${product.id}`
+    url: `/pages/address-list?productId=${product.id}`
   })
 }
 // 在onLoad生命周期函数中，可以接收到上个页面传来的参数

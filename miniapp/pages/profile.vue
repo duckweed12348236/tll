@@ -19,8 +19,9 @@
 </template>
 
 <script setup>
-import {store} from "@/plugins/stores"
+import {useStore} from "@/plugins/stores"
 
+const store = useStore()
 const user = store.user
 
 const exit = async () => {

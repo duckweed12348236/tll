@@ -8,11 +8,11 @@
       <uni-swipe-action-item
           v-for="(address) in addresses"
           :key="address.id"
-          :right-options="options"
+          :right-options="address.isDefault ? partialOptions : options"
           auto-close
           :threshold="20"
-          @click="async ({index}) => await handleAddress(address, index)">
-        <view class="address-item">
+          @click="async ({content}) => await handleAddress(address, content.key)">
+        <view @click="() => chooseAddress(address)" class="address-item">
           <view class="address-header">
             <text class="name">{{ address.name }}</text>
             <text class="phone">{{ address.telephone }}</text>
@@ -40,54 +40,44 @@ import {ref} from "vue"
 import {request} from "@/plugins/request"
 import {onLoad, onUnload, onShow} from "@dcloudio/uni-app"
 import {serializer} from "@/plugins/serializer"
+import {useStore} from "@/plugins/stores"
 
-const addresses = ref([
-  {
-    id: 1,
-    name: "张三",
-    telephone: "13800138000",
-    region: "广东省深圳市",
-    detail: "科技园",
-    isDefault: true
-  },
-  {
-    id: 2,
-    name: "李四",
-    telephone: "13800138000",
-    region: "广东省深圳市",
-    detail: "科技园",
-    isDefault: false
-  }
-])
+const store = useStore()
+const addresses = ref([])
 const productId = ref(null)
-
-const options = ref([
-  {
-    text: "设为默认",
-    style: {
-      backgroundColor: "#007aff"
-    }
-  },
+const partialOptions = [
   {
     text: "编辑",
     style: {
       backgroundColor: "#42B983"
-    }
+    },
+    key: 2
   },
   {
     text: "删除",
     style: {
       backgroundColor: "#dd524d"
-    }
+    },
+    key: 3
   }
-])
+]
+const options = [
+  {
+    text: "设为默认",
+    style: {
+      backgroundColor: "#007aff"
+    },
+    key: 1
+  },
+  ...partialOptions
+]
 
 const fetchAddresses = async () => {
   const response = await request.get("/user/address")
   if (response.code === 1) {
     addresses.value = response.data.map(address => ({
       ...address,
-      isDefault: false
+      isDefault: store.user.defaultAddressId === address.id
     }))
   } else {
     uni.showToast({
@@ -105,6 +95,7 @@ const deleteAddress = (address) => {
       if (confirm) {
         const response = await request.delete("/user/address", address.id)
         if (response.code === 1) {
+          addresses.value = addresses.value.filter((item) => item.id !== address.id)
           uni.showToast({
             title: "删除成功",
             icon: "success"
@@ -115,7 +106,6 @@ const deleteAddress = (address) => {
             icon: "error"
           })
         }
-        addresses.value.splice(index, 1)
       }
     }
   })
@@ -145,6 +135,10 @@ const setDefaultAddress = async (address) => {
       }
     }
     address.isDefault = true
+    store.user = {
+      ...store.user,
+      defaultAddressId: address.id
+    }
   } else {
     uni.showToast({
       title: response.message,
@@ -162,17 +156,16 @@ const chooseAddress = (address) => {
   uni.navigateBack()
 }
 
-// 滑动操作按钮点击事件
-const handleAddress = async (address, index) => {
-  switch (index) {
-    case 0:
+const handleAddress = async (address, key) => {
+  switch (key) {
+    case  1:
       await setDefaultAddress(address)
       break
-    case 1:
+    case 2:
       goToEditAddress(address)
       break
-    case 2:
-      deleteAddress(index)
+    case 3:
+      deleteAddress(address)
       break
   }
 }

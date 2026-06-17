@@ -31,9 +31,10 @@
 
 <script setup>
 import {ref} from "vue"
-import {store} from "@/plugins/stores"
+import {useStore} from "@/plugins/stores"
 import {request} from "@/plugins/request"
 
+const store = useStore()
 const started = ref(false)
 const telephone = ref("")
 const code = ref("")
@@ -52,7 +53,7 @@ const verifyTelephone = () => {
 }
 
 const sendVerificationCode = async () => {
-  if (verifyTelephone()) {
+  if (!verifyTelephone()) {
     return
   }
   started.value = true
@@ -67,7 +68,7 @@ const sendVerificationCode = async () => {
 }
 
 const login = async () => {
-  if (verifyTelephone()) {
+  if (!verifyTelephone()) {
     return
   }
 
@@ -85,9 +86,12 @@ const login = async () => {
   })
   if (response.code === 1) {
     const {user, refreshToken, accessToken} = response.data
-    store.setUser(user)
-    store.setAccessToken(accessToken)
-    store.setRefreshToken(refreshToken)
+    store.user = {
+      ...user,
+      avatar: user.avatar.replace(/\\/g, "/")
+    }
+    store.refreshToken = refreshToken
+    store.accessToken = accessToken
     uni.switchTab({
       url: "/pages/product-list"
     })

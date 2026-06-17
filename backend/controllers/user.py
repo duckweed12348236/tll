@@ -99,9 +99,9 @@ async def update_avatar(avatar: UploadFile = File(), user: User = Depends(get_us
     async with open(path, "wb") as destination:
         while buffer := await avatar.read(1024):
             await destination.write(buffer)
-    url = urljoin(SERVER_URL, filename)
-    result = await User.filter(id=user.id).update(avatar=url)
-    if result:
+    url = urljoin(SERVER_URL, path)
+    valid = await User.filter(id=user.id).update(avatar=url)
+    if valid:
         await UserCache.save_user(user.id, avatar=url)
     return {"url": url}
 
@@ -115,8 +115,8 @@ async def create_address(address_in: AddressIn, user: User = Depends(get_user)):
 
 @router.delete("/address/{aid}")
 async def delete_address(aid: int = Path(gt=0), user: User = Depends(get_user)):
-    result = await Address.filter(id=aid, user_id=user.id).delete()
-    if result:
+    valid = await Address.filter(id=aid, user_id=user.id).delete()
+    if valid:
         await AddressCache.find(AddressCache.id == aid, AddressCache.user_id == user.id).delete()
     return None
 
@@ -137,11 +137,11 @@ async def update_address(address_in: AddressIn, aid: int = Path(gt=0), user: Use
 
 @router.post("/address/{aid}")
 async def set_default_address(aid: int = Path(gt=0), user: User = Depends(get_user)):
-    async with in_transaction():
-        address = await AddressCache.get_address(aid, user.id)
-        if not address:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "不存在该地址")
-        user.default_address_id = address.id
-        await user.save(update_fields=["default_address_id"])
+    address = await AddressCache.get_address(aid, user.id)
+    if not address:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "不存在该地址")
+
+    user.default_address_id = address.id
+    await user.save(update_fields=["default_address_id"])
     await UserCache.save_user(user.id, default_address_id=address.id)
     return None

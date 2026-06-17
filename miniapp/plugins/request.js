@@ -1,4 +1,4 @@
-import {useStore} from "@/plugins/store"
+import {useStore} from "@/plugins/stores"
 import {SERVER_URL} from "@/config"
 
 function parseSnakeCaseToCamelCase(obj) {

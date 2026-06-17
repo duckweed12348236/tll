@@ -8,7 +8,7 @@
         <image
             class="rounded"
             style="height: 80rpx; width: 80rpx;"
-            :src="user.avatar"
+            :src="store.user.avatar"
             mode="widthFix">
         </image>
       </template>
@@ -17,7 +17,7 @@
         @tap="() => dialog.open()"
         showArrow
         title="用户名"
-        :rightText="user.username"
+        :rightText="store.user.username"
         link/>
   </uni-list>
 
@@ -26,19 +26,19 @@
         mode="input"
         title="修改用户名"
         placeholder="请输入用户名"
-        :model-value="user.username"
+        :model-value="store.user.username"
         @confirm="updateUsername"/>
   </uni-popup>
 </template>
 
 <script setup>
 import {ref} from "vue"
-import {store} from "@/plugins/stores"
-import {SERVER_CONFIG} from "@/config"
+import {useStore} from "@/plugins/stores"
+import {SERVER_URL} from "@/config"
 import {serializer} from "@/plugins/serializer"
 import {request} from "@/plugins/request"
 
-const user = store.user
+const store = useStore()
 let dialog = ref()
 
 const updateAvatar = () => {
@@ -51,18 +51,18 @@ const updateAvatar = () => {
       })
 
       uni.uploadFile({
-        url: `${SERVER_CONFIG.baseUrl}/user/avatar`,
+        url: `${SERVER_URL}/user/avatar`,
         header: {
-          Authorization: `Bearer ${store.accessToken.value}`
+          Authorization: `Bearer ${store.accessToken}`
         },
         filePath: images.tempFilePaths[0],
         name: "avatar",
         success: (response) => {
           const data = serializer.parse(response.data)
-          store.setUser({
-            ...user.value,
-            avatar: data.url
-          })
+          store.user = {
+            ...store.user,
+            avatar: data.url.replace(/\\/g, "/")
+          }
           uni.hideLoading()
         },
         fail: (error) => {
@@ -80,10 +80,10 @@ const updateAvatar = () => {
 const updateUsername = async (username) => {
   const response = await request.post("/user/username", username)
   if (response.code === 1) {
-    store.setUser({
-      ...user.value,
+    store.user = {
+      ...store.user,
       username: username
-    })
+    }
   } else {
     uni.showToast({
       icon: "error",

@@ -5,8 +5,8 @@
       <uni-search-bar
           v-model="keyword"
           placeholder="搜索商品"
-          @confirm="handleSearch"
-          @clear="handleClear"
+          @confirm="fetchProducts"
+          @clear="clearKeyword"
           cancel-button="none"
           bg-color="#ffffff"
           radius="100"
@@ -23,9 +23,8 @@
             @click="() => viewProduct(product)">
           <image
               class="product-cover"
-              :src="product.covers && product.covers.length > 0 ? product.covers[0] : '/static/logo.png'"
-              mode="aspectFill"
-          />
+              :src="product.covers[0]"
+              mode="aspectFill"/>
           <view class="product-info">
             <text class="product-name">{{ product.name }}</text>
             <view class="product-price">
@@ -48,33 +47,26 @@
 <script setup>
 import {ref} from "vue"
 import {request} from "@/plugins/request"
+import {handleUrls} from "@/plugins/url"
 import {onShow} from "@dcloudio/uni-app"
 
-const products = ref([
-    {
-        id: 1,
-        name: "商品1",
-        price: 100,
-        covers: ["/static/logo.png"]
-    },
-    {
-        id: 2,
-        name: "商品2",
-        price: 200,
-        covers: ["/static/logo.png"]
-    }
-])
+const products = ref([])
 const keyword = ref("")
 
 const fetchProducts = async () => {
   let params = {}
   if (keyword.value) {
-    params.keyword = keyword.value
+    params = {...params, keyword: keyword.value}
   }
   const response = await request.get("/shopping/product", params)
 
   if (response.code === 1) {
-    // products.value = response.data
+    products.value = response.data
+    products.value.map((product) => {
+      product.covers = handleUrls(product.covers)
+      product.details = handleUrls(product.details)
+      return product
+    })
   } else {
     uni.showToast({
       title: response.message,
@@ -83,13 +75,9 @@ const fetchProducts = async () => {
   }
 }
 
-const handleSearch = () => {
-  fetchProducts()
-}
-
-const handleClear = () => {
+const clearKeyword = async () => {
   keyword.value = ""
-  fetchProducts()
+  await fetchProducts()
 }
 
 const viewProduct = (product) => {
