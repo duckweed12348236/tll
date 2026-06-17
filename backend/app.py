@@ -11,7 +11,7 @@ from tortoise import Tortoise
 from config import TORTOISE_ORM_CONFIG, CORS_ALLOW_ORIGINS, CORS_ALLOW_CREDENTIALS, CORS_ALLOW_METHODS, \
     CORS_ALLOW_HEADERS, CORS_EXPOSE_HEADERS
 from dependencies import authenticate
-from plugins import PluginManager
+from plugins import init_plugins, close_plugins
 from plugins.redis import migrate
 from controllers import user, shopping, admin
 
@@ -20,11 +20,11 @@ from controllers import user, shopping, admin
 async def register_plugins(app: FastAPI) -> AsyncGenerator[None, Any]:
     logger.add("logs/log.log", rotation="500 MB", level="INFO", enqueue=True)
     await Tortoise.init(config=TORTOISE_ORM_CONFIG)
-    await PluginManager.init()
+    await init_plugins()
     await migrate()
     yield
     await Tortoise.close_connections()
-    await PluginManager.close()
+    await close_plugins()
 
 
 app = FastAPI(lifespan=register_plugins, debug=True, dependencies=[Depends(authenticate)])

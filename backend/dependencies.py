@@ -6,7 +6,7 @@ from fastapi import Request, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from plugins.token_handler import TokenHandler, TokenExpiredException
-from plugins.redis import UserCache
+from plugins.redis import UserInfo
 from models.user import User
 
 bearer = HTTPBearer(auto_error=False)
@@ -31,19 +31,19 @@ async def authenticate(request: Request,
     try:
         user_id = token_handler.decode_access_token(auth.credentials)
     except ValueError as e:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, e)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
     except TokenExpiredException as e:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, e)
+        raise HTTPException(status.HTTP_403_FORBIDDEN, str(e))
 
     try:
-        value = await UserCache.find(UserCache.id == user_id).values().first()
+        value = await UserInfo.find(UserInfo.id == user_id).values().first()
         user = User(**value)
     except NotFoundError:
         user = await User.filter(id=user_id).first()
         if not user:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "请先登录")
         value = user.serialize()
-        await UserCache.save_user(**value)
+        await UserInfo.save_user(**value)
     request.state.user = user
     return None
 

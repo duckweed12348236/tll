@@ -5,7 +5,7 @@ from typing import Any
 from tortoise.fields import BigIntField, CharField, DecimalField, JSONField, IntField, IntEnumField, BooleanField, \
     DatetimeField, ForeignKeyField, RESTRICT
 
-from plugins.snowflake.snowflake import Snowflake
+from plugins.snowflake import Snowflake
 from models import Model
 
 snowflake = Snowflake()
@@ -69,7 +69,7 @@ class Order(Model):
     creation_time = DatetimeField(auto_now_add=True)
     address = JSONField[dict[str, str | int]]()
     product = JSONField[dict[str, Any]]()
-    url = CharField(max_length=200, null=True)
+    url = CharField(max_length=1000, null=True)
     trade_number = BigIntField(null=True)
     is_deleted = BooleanField(default=False)
     user_id: int

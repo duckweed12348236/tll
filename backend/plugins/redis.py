@@ -6,6 +6,7 @@ from abc import ABC
 from aredis_om import JsonModel, EmbeddedJsonModel, Field, Migrator, NotFoundError
 from redis.asyncio.lock import Lock
 from redis.asyncio.client import Pipeline
+
 from models.shopping import OrderStatus, Order, Product
 from models.user import Address
 
@@ -13,7 +14,7 @@ from models.user import Address
 class Cache(JsonModel, ABC):
     @classmethod
     def lock(cls, name: str | int, blocking_timeout: int | None = None) -> Lock:
-        return cls.db().lock(f"{cls.Meta.model_key_prefix}.lock:{name}", blocking_timeout=blocking_timeout)
+        return cls.db().lock(f":{cls.Meta.model_key_prefix}_lock:{name}", blocking_timeout=blocking_timeout)
 
     @classmethod
     def create_pipeline(cls) -> Pipeline:
@@ -27,8 +28,11 @@ class Cache(JsonModel, ABC):
         await instance.save(pipeline)
         return instance
 
+    async def remove(self, pipeline: Pipeline | None = None) -> None:
+        await self.delete(self.pk, pipeline)
 
-class VerificationCode(Cache, index=True):
+
+class Code(Cache, index=True):
     telephone: str = Field(index=True, primary_key=True)
     value: str
 
@@ -45,7 +49,7 @@ class VerificationCode(Cache, index=True):
         return instance
 
 
-class AddressCache(Cache, index=True):
+class AddressInfo(Cache, index=True):
     id: int = Field(index=True, primary_key=True)
     name: str
     telephone: str
@@ -84,7 +88,7 @@ class AddressCache(Cache, index=True):
         await cls.add(instances)
 
 
-class UserCache(Cache, index=True):
+class UserInfo(Cache, index=True):
     id: int = Field(index=True, primary_key=True)
     telephone: str
     username: str
@@ -114,7 +118,7 @@ class UserCache(Cache, index=True):
         return instance
 
 
-class ProductCache(Cache, index=True):
+class ProductInfo(Cache, index=True):
     id: int = Field(index=True, primary_key=True)
     name: str = Field(index=True, full_text_search=True)
     price: Decimal = Field(index=True)
@@ -128,23 +132,8 @@ class ProductCache(Cache, index=True):
     class Meta:
         model_key_prefix = "product"
 
-    @classmethod
-    async def save_product(cls, key: int | None = None, **kwargs: Any) -> Self | None:
-        if not key:
-            instance = cls(**kwargs)
-            await instance.save()
-            return instance
-        async with cls.lock(key):
-            try:
-                instance = await cls.find(cls.id == key).first()
-            except NotFoundError:
-                return None
-            await instance.update(**kwargs)
-        return instance
-
-    @classmethod
-    async def update_stock(cls, key: int, quantity: int) -> None:
-        await cls.db().json().numincrby(key, ".stock", quantity)
+    async def update_stock(self, quantity: int) -> None:
+        await self.db().json().numincrby(self.key(), ".stock", quantity)
 
     @classmethod
     async def init(cls):
@@ -152,7 +141,7 @@ class ProductCache(Cache, index=True):
         await cls.add(instances)
 
 
-class AddressInfo(EmbeddedJsonModel):
+class AddressEmbedded(EmbeddedJsonModel):
     """
     地址信息模型
 
@@ -170,23 +159,23 @@ class AddressInfo(EmbeddedJsonModel):
     detail: str
 
 
-class ProductInfo(EmbeddedJsonModel):
+class ProductEmbedded(EmbeddedJsonModel):
     """
-    商品信息数据模型
+    商品信息嵌入模型
 
     Attributes:
         name (str): 商品名称
-        price (str): 商品价格
+        price (Decimal): 商品价格
         covers (list[str]): 商品封面图片列表
-        details (list[str]): 商品详情图片列表
+        details (list[str]): 商品详情描述列表
     """
     name: str
-    price: str
+    price: Decimal
     covers: list[str]
     details: list[str]
 
 
-class OrderCache(Cache, index=True):
+class OrderInfo(Cache, index=True):
     """
     订单缓存模型，用于在 Redis 中缓存订单数据
 
@@ -196,8 +185,8 @@ class OrderCache(Cache, index=True):
         quantity (int): 订单商品数量
         amount (Decimal): 订单金额
         creation_time (datetime): 订单创建时间
-        address (AddressInfo): 收货地址信息
-        product (ProductInfo): 商品信息
+        address (AddressEmbedded): 收货地址信息
+        product (ProductEmbedded): 商品信息
         url (str): 订单相关链接
         trade_number (int | None): 交易编号
         is_deleted (bool): 是否已删除，默认为 False
@@ -208,8 +197,8 @@ class OrderCache(Cache, index=True):
     quantity: int
     amount: Decimal
     creation_time: datetime = Field(index=True, sortable=True)
-    address: AddressInfo
-    product: ProductInfo
+    address: AddressEmbedded
+    product: ProductEmbedded
     url: str
     trade_number: int | None = None
     is_deleted: bool = Field(False, index=True)
@@ -223,9 +212,9 @@ class OrderCache(Cache, index=True):
         address = kwargs.pop("address", None)
         product = kwargs.pop("product", None)
         if address:
-            kwargs.update(address=AddressInfo(**address))
+            kwargs.update(address=AddressEmbedded(**address))
         if product:
-            kwargs.update(product=ProductInfo(**product))
+            kwargs.update(product=ProductEmbedded(**product))
         if not key:
             instance = cls(**kwargs)
             await instance.save()
@@ -247,6 +236,6 @@ class OrderCache(Cache, index=True):
 async def migrate() -> None:
     migrator = Migrator()
     await migrator.run()
-    await AddressCache.init()
-    await OrderCache.init()
-    await ProductCache.init()
+    await AddressInfo.init()
+    await OrderInfo.init()
+    await ProductInfo.init()

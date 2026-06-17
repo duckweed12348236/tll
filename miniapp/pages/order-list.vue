@@ -60,23 +60,11 @@
 <script setup>
 import {ref} from "vue"
 import {request} from "@/plugins/request"
+import {handleUrls} from "@/plugins/url"
+import {serializer} from "@/plugins/serializer"
 import {onShow} from "@dcloudio/uni-app"
 
-const orders = ref([
-  {
-    id: 1,
-    status: 2,
-    quantity: 1,
-    amount: 100,
-    creationTime: 1645600000000,
-    product: {
-      id: 1,
-      name: "商品1",
-      price: 100,
-      covers: ["/static/logo.png"]
-    }
-  }
-])
+const orders = ref([])
 const filterOptions = ["全部", "未支付", "已支付", "配送中", "已完成", "退款中", "已退款"]
 const statusOptions = {
   0: {label: "未支付", className: "status-unpaid"},
@@ -102,6 +90,11 @@ const fetchOrders = async (option = -1) => {
   const response = await request.get("/shopping/order", {option})
   if (response.code === 1) {
     orders.value = response.data
+    orders.value.map(order => {
+      order.product.covers = handleUrls(order.product.covers)
+      order.product.details = handleUrls(order.product.details)
+      return order
+    })
   } else {
     uni.showToast({
       title: response.message,
@@ -137,7 +130,7 @@ const deleteOrder = (order) => {
 
 const viewOrder = (order) => {
   uni.navigateTo({
-    url: `/pages/order-detail?order=${encodeURIComponent(JSON.stringify(order))}`
+    url: `/pages/order-detail?order=${encodeURIComponent(serializer.stringify(order))}`
   })
 }
 

@@ -11,7 +11,7 @@ from loguru import logger
 from tortoise.transactions import in_transaction
 
 from config import STORAGE_DIR, SERVER_URL
-from plugins.redis import ProductCache, OrderCache
+from plugins.redis import ProductInfo, OrderInfo
 from schemas.admin import ProductIn, ProductQuery, ProductStatusOption, OrderQuery, OrderStatusOption, DayOption
 from models.shopping import Product, OrderStatus
 
@@ -23,6 +23,7 @@ allowed_mime_types = {
     'image/png',
     'image/webp'
 }
+
 
 @router.post("/image")
 async def upload_images(images: list[UploadFile] = File()):
@@ -54,7 +55,8 @@ async def upload_images(images: list[UploadFile] = File()):
 @router.post("/product")
 async def create_product(product_in: ProductIn):
     product = await Product.create(**product_in.model_dump())
-    await ProductCache.save_product(**product.serialize())
+    product_info = ProductInfo(**product.serialize())
+    await product_info.save()
     return None
 
 
@@ -62,27 +64,27 @@ async def create_product(product_in: ProductIn):
 async def list_products(query: ProductQuery = Query()):
     exprs = []
     if query.name:
-        exprs.append(ProductCache.name % query.name)
+        exprs.append(ProductInfo.name % query.name)
     if query.price_max:
-        exprs.append(ProductCache.price <= query.price_max)
+        exprs.append(ProductInfo.price <= query.price_max)
     if query.price_min:
-        exprs.append(ProductCache.price >= query.price_min)
+        exprs.append(ProductInfo.price >= query.price_min)
     if query.stock_max:
-        exprs.append(ProductCache.stock <= query.stock_max)
+        exprs.append(ProductInfo.stock <= query.stock_max)
     if query.stock_min:
-        exprs.append(ProductCache.stock >= query.stock_min)
+        exprs.append(ProductInfo.stock >= query.stock_min)
     if query.status != ProductStatusOption.ALL:
         status = not query.status
-        exprs.append(ProductCache.discontinued == status)
-    return await ProductCache.find(*exprs).sort_by("-creation_time").page(
+        exprs.append(ProductInfo.discontinued == status)
+    return await ProductInfo.find(*exprs).sort_by("-creation_time").page(
         (query.page - 1) * query.size, query.size)
 
 
 @router.put("/product/{product_id}")
 async def update_product(product_in: ProductIn, product_id: int = Path(gt=0)):
-    result = await Product.filter(id=product_id).update(**product_in.model_dump())
-    if result:
-        await ProductCache.save_product(product_id, **product_in.model_dump())
+    valid = await Product.filter(id=product_id).update(**product_in.model_dump())
+    if valid:
+        await ProductInfo.find(ProductInfo.id == product_id).update(**product_in.model_dump())
     return None
 
 
@@ -94,7 +96,7 @@ async def update_product_status(product_id: int = Path(gt=0)):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "商品不存在")
         product.discontinued = not product.discontinued
         await product.save(update_fields=["discontinued"])
-    await ProductCache.save_product(product_id, discontinued=product.discontinued)
+    await ProductInfo.find(ProductInfo.id == product_id).update(discontinued=product.discontinued)
     return None
 
 
@@ -103,8 +105,8 @@ async def delete_product(product_id: int = Path(gt=0)):
     result = await Product.filter(id=product_id, discontinued=True).delete()
     if not result:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "该商品正在售卖，请先下架")
-    async with ProductCache.lock(product_id):
-        await ProductCache.find(ProductCache.id == product_id).delete()
+    async with ProductInfo.lock(product_id):
+        await ProductInfo.find(ProductInfo.id == product_id).delete()
     return None
 
 
@@ -112,26 +114,26 @@ async def delete_product(product_id: int = Path(gt=0)):
 async def list_orders(query: OrderQuery = Query()):
     exprs = []
     if query.status != OrderStatusOption.ALL:
-        exprs.append(OrderCache.status == query.status)
+        exprs.append(OrderInfo.status == query.status)
     if query.amount_min:
-        exprs.append(OrderCache.amount >= query.amount_min)
+        exprs.append(OrderInfo.amount >= query.amount_min)
     if query.amount_max:
-        exprs.append(OrderCache.amount <= query.amount_max)
+        exprs.append(OrderInfo.amount <= query.amount_max)
     if query.creation_time_min:
-        exprs.append(OrderCache.creation_time >= query.creation_time_min)
+        exprs.append(OrderInfo.creation_time >= query.creation_time_min)
     if query.creation_time_max:
-        exprs.append(OrderCache.creation_time <= query.creation_time_max)
-    return await OrderCache.find(*exprs).sort_by("-creation_time").page(
+        exprs.append(OrderInfo.creation_time <= query.creation_time_max)
+    return await OrderInfo.find(*exprs).sort_by("-creation_time").page(
         (query.page - 1) * query.size, query.size)
 
 
 @router.get("/order/summary")
 async def get_order_summary(days: DayOption = Query()):
     today = datetime.combine(datetime.today(), time.min)
-    orders = await OrderCache.find(
-        OrderCache.status != OrderStatus.UNPAID,
-        OrderCache.creation_time <= today,
-        OrderCache.creation_time >= (today - timedelta(days=days.value))
+    orders = await OrderInfo.find(
+        OrderInfo.status != OrderStatus.UNPAID,
+        OrderInfo.creation_time <= today,
+        OrderInfo.creation_time >= (today - timedelta(days=days.value))
     ).sort_by("-creation_time").only("id", "amount", "quantity", "creation_time").all()
     summary = {}
     for order in orders:

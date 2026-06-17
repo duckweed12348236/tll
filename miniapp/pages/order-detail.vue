@@ -3,10 +3,10 @@
     <!-- 订单状态卡片 -->
     <view class="status-card">
       <view class="status-icon">
-        <uni-icons :type="getStatusIcon(order.status)" size="60" :color="getStatusColor(order.status)"/>
+        <uni-icons :type="statusOptions[order.status].icon" size="60" :color="statusOptions[order.status].color"/>
       </view>
       <view class="status-info">
-        <text class="status-text">{{ getStatusText(order.status) }}</text>
+        <text class="status-text">{{ statusOptions[order.status].label }}</text>
         <text class="order-id">订单号: {{ order.id }}</text>
       </view>
     </view>
@@ -76,7 +76,9 @@
         </view>
         <view class="info-row">
           <text class="label">订单状态:</text>
-          <text class="value" :style="{ color: getStatusColor(order.status) }">{{ getStatusText(order.status) }}</text>
+          <text class="value" :style="{ color: statusOptions[order.status].color }">
+            {{ statusOptions[order.status].label }}
+          </text>
         </view>
         <view class="info-row">
           <text class="label">商品名称:</text>
@@ -100,82 +102,34 @@
 </template>
 
 <script setup>
-import {ref} from "vue"
+import {reactive} from "vue"
 import {onLoad} from "@dcloudio/uni-app"
+import {serializer} from "@/plugins/serializer"
 
-const order = ref({})
-
-const getStatusText = (status) => {
-  const map = {
-    0: '未支付',
-    1: '已支付',
-    2: '配送中',
-    3: '已完成',
-    4: '退款中',
-    5: '已退款'
-  }
-  return map[status] || '未知状态'
-}
-
-const getStatusColor = (status) => {
-  const map = {
-    0: '#ff4444', // 未支付 - 红色
-    1: '#28a745', // 已支付 - 绿色
-    2: '#007bff', // 配送中 - 蓝色
-    3: '#666',    // 已完成 - 灰色
-    4: '#ffc107', // 退款中 - 黄色
-    5: '#6c757d'  // 已退款 - 深灰
-  }
-  return map[status] || '#999'
-}
-
-const getStatusIcon = (status) => {
-  const map = {
-    0: 'wallet',      // 未支付
-    1: 'checkmark',   // 已支付
-    2: 'paperplane',  // 配送中
-    3: 'checkbox',    // 已完成
-    4: 'refresh',     // 退款中
-    5: 'undo'         // 已退款
-  }
-  return map[status] || 'help'
+const order = reactive({})
+const statusOptions = {
+  0: {label: "未支付", color: "#ff4444", icon: "wallet"},
+  1: {label: "已支付", color: "#28a745", icon: "checkmark"},
+  2: {label: "配送中", color: "#007bff", icon: "paperplane"},
+  3: {label: "已完成", color: "#666", icon: "checkbox"},
+  4: {label: "退款中", color: "#ffc107", icon: "refresh"},
+  5: {label: "已退款", color: "#6c757d", icon: "undo"}
 }
 
 const formatTime = (timestamp) => {
-  if (!timestamp) return ''
+  if (!timestamp) return ""
   const date = new Date(timestamp)
   const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  const second = String(date.getSeconds()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  const hour = String(date.getHours()).padStart(2, "0")
+  const minute = String(date.getMinutes()).padStart(2, "0")
+  const second = String(date.getSeconds()).padStart(2, "0")
   return `${year}-${month}-${day} ${hour}:${minute}:${second}`
 }
 
 onLoad((options) => {
-  if (options.order) {
-    try {
-      order.value = JSON.parse(decodeURIComponent(options.order))
-    } catch (e) {
-      console.error('解析订单数据失败', e)
-      uni.showToast({
-        title: '订单数据错误',
-        icon: 'error'
-      })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
-    }
-  } else {
-    uni.showToast({
-      title: '缺少订单信息',
-      icon: 'error'
-    })
-    setTimeout(() => {
-      uni.navigateBack()
-    }, 1500)
-  }
+  Object.assign(order, serializer.parse(options.order))
 })
 </script>
 

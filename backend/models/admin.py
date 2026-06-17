@@ -1,7 +1,7 @@
 from tortoise.fields import BigIntField, CharField
 
 from models import Model
-from plugins.snowflake.snowflake import Snowflake
+from plugins.snowflake import Snowflake
 
 snowflake = Snowflake()
 

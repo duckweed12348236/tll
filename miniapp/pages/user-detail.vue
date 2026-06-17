@@ -78,7 +78,7 @@ const updateAvatar = () => {
 }
 
 const updateUsername = async (username) => {
-  const response = await request.post("/user/username", username)
+  const response = await request.post("/user/username", {value: username})
   if (response.code === 1) {
     store.user = {
       ...store.user,

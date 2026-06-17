@@ -3,9 +3,8 @@
 
 import time
 
-from .exceptions import InvalidSystemClock
 from config import SNOWFLAKE_WORKER_ID, SNOWFLAKE_DATACENTER_ID, SNOWFLAKE_SEQUENCE
-from .. import Singleton
+from plugins import Singleton
 
 # 64位ID的划分
 WORKER_ID_BITS = 5
@@ -26,6 +25,13 @@ SEQUENCE_MASK = -1 ^ (-1 << SEQUENCE_BITS)
 
 # Twitter元年时间戳
 TWEPOCH = 1288834974657
+
+
+class InvalidSystemClock(Exception):
+    """
+    时钟回拨异常
+    """
+    pass
 
 
 class Snowflake(Singleton):

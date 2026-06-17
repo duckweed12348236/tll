@@ -7,13 +7,14 @@ class Singleton(metaclass=SingletonMeta):
     pass
 
 
-class PluginMeta(SingletonMeta, ABCMeta):
-    plugin_classes = []
+plugin_classes = []
 
+
+class PluginMeta(SingletonMeta, ABCMeta):
     def __new__(cls, name, bases, attrs):
         sub_cls = super().__new__(cls, name, bases, attrs)
         if name != "Plugin":
-            cls.plugin_classes.append(sub_cls)
+            plugin_classes.append(sub_cls)
         return sub_cls
 
 
@@ -27,17 +28,16 @@ class Plugin(ABC, metaclass=PluginMeta):
         pass
 
 
-class PluginManager:
-    plugins: list[Plugin] = []
+plugins = []
 
-    @classmethod
-    async def init(cls):
-        for plugin_cls in PluginMeta.plugin_classes:
-            plugin = plugin_cls()
-            await plugin.init()
-            cls.plugins.append(plugin)
 
-    @classmethod
-    async def close(cls):
-        for plugin in cls.plugins:
-            await plugin.close()
+async def init_plugins():
+    for plugin_cls in plugin_classes:
+        plugin = plugin_cls()
+        await plugin.init()
+        plugins.append(plugin)
+
+
+async def close_plugins():
+    for plugin in plugins:
+        await plugin.close()

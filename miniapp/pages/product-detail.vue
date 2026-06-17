@@ -168,6 +168,7 @@ const placeOrder = async () => {
   })
 
   if (response.code === 1) {
+    const url = response.data
     uni.showToast({
       title: "下单成功",
       icon: "success"
@@ -190,7 +191,7 @@ const actions = [{
 
 const previewImage = (urls, current) => {
   uni.previewImage({
-    urls: urls,
+    urls,
     current
   })
 }
@@ -202,8 +203,8 @@ const chooseAddress = () => {
 }
 // 在onLoad生命周期函数中，可以接收到上个页面传来的参数
 onLoad((options) => {
-  // var EnvUtils = plus.android.importClass("com.alipay.sdk.app.EnvUtils")
-  // EnvUtils.setEnv(EnvUtils.EnvEnum.SANDBOX)
+  var EnvUtils = plus.android.importClass("com.alipay.sdk.app.EnvUtils")
+  EnvUtils.setEnv(EnvUtils.EnvEnum.SANDBOX)
   uni.$on("chooseAddress", (data) => Object.assign(address, data))
 
   if (options.hasOwnProperty("productId")) {

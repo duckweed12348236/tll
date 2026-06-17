@@ -100,14 +100,14 @@ class Request {
                 header: {
                     "Access-Control-Allow-Origin": true
                 },
-                data: store.refreshToken
+                data: {value: store.refreshToken}
             })
 
             if (response.statusCode === 401) {
                 return null
             }
 
-            return parseSnakeCaseToCamelCase(response.data)
+            return response.data
         } catch (e) {
             return null
         }
@@ -140,14 +140,12 @@ class Request {
 
             switch (response.statusCode) {
                 case 403:
-                    const tokens = await this.updateToken()
-                    if (tokens === null) {
+                    const token = await this.updateToken()
+                    if (token === null) {
                         this.exit()
                         return
                     }
-
-                    store.accessToken = tokens.accessToken
-                    store.refreshToken = tokens.refreshToken
+                    store.accessToken = token
                     return await this.send(method, url, data, path)
                 case 401:
                     this.exit()

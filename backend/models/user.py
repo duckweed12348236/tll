@@ -1,12 +1,11 @@
 import random
 import string
 
-from tortoise.fields import BigIntField, CharField, BooleanField, DatetimeField, ReverseRelation, ForeignKeyField, \
-    RESTRICT
+from tortoise.fields import BigIntField, CharField, BooleanField, DatetimeField, ReverseRelation, ForeignKeyField
 
 from models import Model
 from models.shopping import Order
-from plugins.snowflake.snowflake import Snowflake
+from plugins.snowflake import Snowflake
 
 snowflake = Snowflake()
 
