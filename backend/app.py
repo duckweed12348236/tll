@@ -9,7 +9,7 @@ from loguru import logger
 from tortoise import Tortoise
 
 from config import TORTOISE_ORM_CONFIG, CORS_ALLOW_ORIGINS, CORS_ALLOW_CREDENTIALS, CORS_ALLOW_METHODS, \
-    CORS_ALLOW_HEADERS, CORS_EXPOSE_HEADERS
+    CORS_ALLOW_HEADERS, CORS_EXPOSE_HEADERS, STORAGE_DIR_NAME
 from dependencies import authenticate
 from plugins import init_plugins, close_plugins
 from plugins.redis import migrate
@@ -32,7 +32,7 @@ app = FastAPI(lifespan=register_plugins, debug=True, dependencies=[Depends(authe
 app.include_router(user.router)
 app.include_router(shopping.router)
 app.include_router(admin.router)
-app.mount("/storage", StaticFiles(directory="storage"), name="storage")
+app.mount(f"/{STORAGE_DIR_NAME}", StaticFiles(directory=STORAGE_DIR_NAME), name=STORAGE_DIR_NAME)
 
 app.add_middleware(
     CORSMiddleware,

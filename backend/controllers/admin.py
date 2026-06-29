@@ -10,7 +10,7 @@ from fastapi import HTTPException, status, APIRouter, UploadFile, File, Path, Qu
 from loguru import logger
 from tortoise.transactions import in_transaction
 
-from config import STORAGE_DIR, SERVER_URL
+from config import STORAGE_DIR_NAME, SERVER_URL
 from plugins.redis import ProductInfo, OrderInfo
 from schemas.admin import ProductIn, ProductQuery, ProductStatusOption, OrderQuery, OrderStatusOption, DayOption
 from models.shopping import Product, OrderStatus
@@ -44,7 +44,7 @@ async def upload_images(images: list[UploadFile] = File()):
             continue
         await image.seek(0)
         filename = f"image_{uuid.uuid4().hex}{extension}"
-        path = join(STORAGE_DIR, filename)
+        path = join(STORAGE_DIR_NAME, filename)
         async with open(path, "wb") as destination:
             while buffer := await image.read(1024):
                 await destination.write(buffer)

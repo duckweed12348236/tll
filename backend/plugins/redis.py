@@ -39,15 +39,6 @@ class Code(Cache, index=True):
     class Meta:
         model_key_prefix = "code"
 
-    @classmethod
-    async def save_code(cls, telephone: str, code: str | int) -> Self:
-        instance = cls(telephone=telephone, value=str(code))
-        pipeline = cls.create_pipeline()
-        await instance.save(pipeline)
-        await instance.expire(60, pipeline)
-        await pipeline.execute()
-        return instance
-
 
 class AddressInfo(Cache, index=True):
     id: int = Field(index=True, primary_key=True)

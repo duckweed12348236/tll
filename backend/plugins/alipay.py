@@ -16,7 +16,7 @@ class Alipay(Singleton):
             verbose=True
         )
 
-    def pay(self, order_id: str, amount: str, subject: str, notify_url: str | None = None) -> str:
+    def pay(self, order_id: str, amount: str, subject: str, notify_url: str) -> str:
         return self.instance.api_alipay_trade_app_pay(
             out_trade_no=order_id,
             subject=subject,

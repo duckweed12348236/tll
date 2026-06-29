@@ -169,11 +169,24 @@ const placeOrder = async () => {
 
   if (response.code === 1) {
     const url = response.data
-    uni.showToast({
-      title: "下单成功",
-      icon: "success"
+    uni.getProvider({
+      service: "payment",
+      success: (response) => {
+
+        console.log(response)
+        uni.showToast({
+          title: "支付成功",
+          icon: "success"
+        })
+        popupInstance.value.close()
+      },
+      fail: (error) => {
+        uni.showToast({
+          title: `支付失败，原因是${serializer.stringify(error)}`,
+          icon: "error"
+        })
+      }
     })
-    popupInstance.value.close()
   } else {
     uni.showToast({
       title: response.message,
@@ -201,10 +214,8 @@ const chooseAddress = () => {
     url: `/pages/address-list?productId=${product.id}`
   })
 }
-// 在onLoad生命周期函数中，可以接收到上个页面传来的参数
+
 onLoad((options) => {
-  var EnvUtils = plus.android.importClass("com.alipay.sdk.app.EnvUtils")
-  EnvUtils.setEnv(EnvUtils.EnvEnum.SANDBOX)
   uni.$on("chooseAddress", (data) => Object.assign(address, data))
 
   if (options.hasOwnProperty("productId")) {

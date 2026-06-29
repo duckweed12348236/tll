@@ -45,6 +45,9 @@ async def get_product(user: User = Depends(get_user), product_id: int = Path(gt=
     return [product, address]
 
 
+notify_url = "https://1263cm65sc709.vicp.fun:12586/shopping/order/notify"
+
+
 @router.post("/order")
 async def place_order(order_in: OrderIn, user: User = Depends(get_user), now: datetime = Depends(get_now)):
     address = await AddressInfo.get_address(order_in.address_id, user.id)
@@ -70,7 +73,12 @@ async def place_order(order_in: OrderIn, user: User = Depends(get_user), now: da
     price = product.price.quantize(Decimal("0.00"))
     amount = (price * quantity).quantize(Decimal("0.00"))
     print(amount)
-    url = alipay.pay(str(order_id), format(amount, ".2f"), product.name)
+    url = alipay.pay(
+        order_id,
+        format(amount, ".2f"),
+        product.name,
+        f"{notify_url}?order_id={order_id}&product_id={product_id}&user_id={user.id}"
+    )
     order = await OrderInfo.create(
         id=order_id,
         quantity=quantity,
@@ -96,16 +104,19 @@ async def place_order(order_in: OrderIn, user: User = Depends(get_user), now: da
     return url
 
 
-@router.post("/order/{order_id}")
-async def pay_order(order_id: int = Path(gt=0),
-                    order_info: dict[str, Any] = Form(),
-                    user: User = Depends(get_user)):
+@router.post("/order/notify")
+async def pay_order(order_id: int = Query(gt=0),
+                    product_id: int = Query(gt=0),
+                    user_id: int = Query(gt=0),
+                    order_info: dict[str, Any] = Form()):
+    print(order_info)
+
     if not alipay.verify(order_info, order_info.pop("sign")):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "非法订单")
 
     try:
         order = await OrderInfo.find(OrderInfo.id == order_id,
-                                     OrderInfo.user_id == user.id,
+                                     OrderInfo.user_id == user_id,
                                      OrderInfo.is_deleted == False).first()
     except NotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "订单不存在")
@@ -117,12 +128,14 @@ async def pay_order(order_id: int = Path(gt=0),
             new_status = OrderStatus.PAID
         case "TRADE_CLOSED":
             new_status = OrderStatus.REFUNDED
+        case "TRADE_FINISHED":
+            new_status = OrderStatus.FINISHED
         case _:
             return None
     await order.update(status=new_status, trade_number=trade_number)
     value = {**order.model_dump(exclude={"pk"}), "product_id": None}
     if new_status == OrderStatus.REFUNDED:
-        value["product_id"] = order_info["product_id"]
+        value = {**value, "product_id": product_id}
     await kafka_producer.send("update_orders", value)
     return None
 

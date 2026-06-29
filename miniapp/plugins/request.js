@@ -93,6 +93,10 @@ class Request {
     async updateToken() {
         const store = useStore()
 
+        if (!store.hasOwnProperty("refreshToken")) {
+            return null
+        }
+
         try {
             const response = await uni.request({
                 method: "POST",
