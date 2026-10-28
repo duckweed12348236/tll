@@ -1,0 +1,60 @@
+# 构建输出
+unpackage/
+dist/
+build/
+
+# 依赖目录
+node_modules/
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 日志文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE 文件
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.code-workspace
+*.sublime-*
+
+# HBuilderX 相关
+.hbuilderx/
+.hbuilder/
+
+# uni-app 相关
+# project.config.json  # 小程序项目配置文件，通常需要提交，若包含敏感信息可取消注释
+# project.private.config.json  # 私有配置文件，通常忽略
+
+# uni_modules 生成文件
+uni_modules/
+
+# 操作系统临时文件
+*.tmp
+*.temp
+
+# 其他
+*.bak
+*.backup
+
+prompts

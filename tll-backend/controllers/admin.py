@@ -1,0 +1,145 @@
+import os
+import uuid
+from os.path import join
+from urllib.parse import urljoin
+from datetime import datetime, timedelta, time
+
+import magic
+from aiofiles import open
+from fastapi import HTTPException, status, APIRouter, UploadFile, File, Path, Query
+from loguru import logger
+from tortoise.expressions import Q
+from tortoise.transactions import in_transaction
+
+from config import STORAGE_DIR_NAME, SERVER_URL
+from plugins.redis import Stock
+from schemas.admin import ProductIn, ProductQuery, ProductStatusOption, OrderQuery, OrderStatusOption, DayOption
+from models.shopping import Order, OrderStatus, Product
+
+router = APIRouter(prefix="/admin")
+allowed_extensions = {'.jpg', '.jpeg', '.png', '.webp'}
+allowed_mime_types = {
+    'image/jpg',
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+}
+
+
+@router.post("/image")
+async def upload_images(images: list[UploadFile] = File()):
+    urls = []
+    for image in images:
+        extension = os.path.splitext(image.filename)[-1].lower()
+        if extension not in allowed_extensions:
+            logger.info(f"不支持的图片格式{extension}")
+            continue
+        mime_type = image.content_type
+        if mime_type not in allowed_mime_types:
+            logger.info(f"不支持的图片类型{mime_type}")
+            continue
+        head_buffer = await image.read(1024)
+        mime_type = magic.from_buffer(head_buffer, mime=True)
+        if mime_type not in allowed_mime_types:
+            logger.info(f"不支持的图片类型{mime_type}")
+            continue
+        await image.seek(0)
+        filename = f"image_{uuid.uuid4().hex}{extension}"
+        path = join(STORAGE_DIR_NAME, filename)
+        async with open(path, "wb") as destination:
+            while buffer := await image.read(1024):
+                await destination.write(buffer)
+        urls.append(urljoin(SERVER_URL, path))
+    return urls
+
+
+@router.post("/product")
+async def create_product(product_in: ProductIn):
+    product = await Product.create(**product_in.model_dump())
+    await Stock.set(product.id, product.stock)
+    return None
+
+
+@router.get("/product")
+async def list_products(query: ProductQuery = Query()):
+    conditions = []
+    if query.name:
+        conditions.append(Q(name__icontains=query.name))
+    if query.price_max:
+        conditions.append(Q(price__lte=query.price_max))
+    if query.price_min:
+        conditions.append(Q(price__gte=query.price_min))
+    if query.stock_max:
+        conditions.append(Q(stock__lte=query.stock_max))
+    if query.stock_min:
+        conditions.append(Q(stock__gte=query.stock_min))
+    if query.status != ProductStatusOption.ALL:
+        conditions.append(Q(discontinued=query.status == ProductStatusOption.DELISTED))
+    return await Product.filter(*conditions).order_by("-creation_time").offset(
+        (query.page - 1) * query.size).limit(query.size).values()
+
+
+@router.put("/product/{product_id}")
+async def update_product(product_in: ProductIn, product_id: int = Path(gt=0)):
+    valid = await Product.filter(id=product_id).update(**product_in.model_dump())
+    if valid:
+        await Stock.set(product_id, product_in.stock)
+    return None
+
+
+@router.patch("/product/{product_id}")
+async def update_product_status(product_id: int = Path(gt=0)):
+    async with in_transaction():
+        product = await Product.filter(id=product_id).first().only("id", "discontinued")
+        if not product:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "商品不存在")
+        product.discontinued = not product.discontinued
+        await product.save(update_fields=["discontinued"])
+    return None
+
+
+@router.delete("/product/{product_id}")
+async def delete_product(product_id: int = Path(gt=0)):
+    result = await Product.filter(id=product_id, discontinued=True).delete()
+    if not result:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "该商品正在售卖，请先下架")
+    await Stock.remove(product_id)
+    return None
+
+
+@router.get("/order")
+async def list_orders(query: OrderQuery = Query()):
+    conditions = []
+    if query.status != OrderStatusOption.ALL:
+        conditions.append(Q(status=query.status))
+    if query.amount_min:
+        conditions.append(Q(amount__gte=query.amount_min))
+    if query.amount_max:
+        conditions.append(Q(amount__lte=query.amount_max))
+    if query.creation_time_min:
+        conditions.append(Q(creation_time__gte=query.creation_time_min))
+    if query.creation_time_max:
+        conditions.append(Q(creation_time__lte=query.creation_time_max))
+    return await Order.filter(*conditions).order_by("-creation_time").offset(
+        (query.page - 1) * query.size).limit(query.size).values()
+
+
+@router.get("/order/summary")
+async def get_order_summary(days: DayOption = Query()):
+    today = datetime.combine(datetime.today(), time.min)
+    orders = await Order.filter(
+        status__not=OrderStatus.UNPAID,
+        creation_time__lte=today,
+        creation_time__gte=(today - timedelta(days=days.value))
+    ).order_by("-creation_time").values("amount", "quantity", "creation_time")
+    summary = {}
+    for order in orders:
+        date = order["creation_time"].replace(hour=0, minute=0, second=0, microsecond=0)
+        item = summary.get(date, None)
+        if not item:
+            summary[date] = {"amount": order["amount"], "quantity": order["quantity"], "count": 1}
+            continue
+        item["amount"] += order["amount"]
+        item["quantity"] += order["quantity"]
+        item["count"] += 1
+    return summary

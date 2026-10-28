@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package tll.user;
+
+import "google/protobuf/timestamp.proto";
+
+message User {
+  int64 id = 1;
+  string telephone = 2;
+  bool active = 3;
+  google.protobuf.Timestamp last_login = 4;
+}
+
+message LoginRequest {
+  string telephone = 1;
+}
+
+message LoginReply {
+  User user = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message AccessTokenReply {
+  string access_token = 1;
+}
+
+message GetUserRequest {
+  int64 user_id = 1;
+}
+
+service UserService {
+  rpc login(LoginRequest) returns (LoginReply);
+  rpc update_access_token(RefreshTokenRequest) returns (AccessTokenReply);
+  rpc get_user(GetUserRequest) returns (User);
+}
